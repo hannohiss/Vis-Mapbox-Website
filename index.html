@@ -39,17 +39,17 @@
     <script>
         //YOUR TURN: Replace with a link to your CSV
         const csvUrl =
-            "https://raw.githubusercontent.com/mjdanielson/ca-districts-map/main/2018-CA-House-Results.csv";
+            "https://raw.githubusercontent.com/hannohiss/Vis-Mapbox-Website/main/housing_sf_other_w_census.csv"
 
         const csvPromise = papaPromise(csvUrl);
-        //YOUR TURN: Replace with your Mapbox Token
+        // Mapbox Token
         mapboxgl.accessToken =
             "pk.eyJ1IjoiaGFubm9oaXNzIiwiYSI6ImNsdWd6NnNtNzBjaGkybHAyMXAwZW95dnYifQ.ugCpnrkxesS79JfAl9fhJw";
         var map = new mapboxgl.Map({
             container: "map",
             style: "mapbox://styles/mapbox/light-v10", // YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
-            zoom: 4.5, // zoom level
-            center: [-120.4, 36.0], // center ][lng, lat]
+            zoom: 7.5, // zoom level
+            center: [-71, 42.2], // center ][lng, lat]
             transformRequest: transformRequest,
         });
 
@@ -59,53 +59,53 @@
                 results.data.forEach((row) => {
                     map.setFeatureState(
                         {
-                            //YOUR TURN: Replace with your source tileset and source layer
-                            source: "ca-districts-2018",
-                            sourceLayer: "ca-districts-2018",
-                            //YOUR TURN: Replace with unqiue ID row name
-                            id: row.district,
+                            // your source tileset and source layer
+                            source: "mass-muni",
+                            sourceLayer: "ma_municipalities_degrees-8uvqwo",
+                            // unqiue ID row name
+                            id: row.muni_id,
                         },
                         //YOUR TURN: Add rows you want to style/interact with
                         {
-                            party: row.party,
-                            candidate: row.candidate,
+                            municipal: row.muni,
+                            single_family: row.only_single_family,
+                            // This is the query for "%_single_family", round to 2 decimal places
+                            percentage_single_family: Math.round(row["%_single_family"] * 100) / 100,
                         }
                     );
                 });
             });
 
-            //YOUR TURN: Add source layer
-            map.addSource("ca-districts-2018", {
+            // YOUR TURN: Add source layer
+            map.addSource("mass-muni", {
                 type: "vector",
-                url: "mapbox://mapbox-community.ca-districts-2018",
-                promoteId: "GEOID",
+                url: "mapbox://hannohiss.890zal4l",
+                promoteId: "muni_id",
             });
 
             map.addLayer({
-                id: "ca-district-fill",
+                id: "mass-muni-fill",
                 type: "fill",
-                source: "ca-districts-2018",
-                "source-layer": "ca-districts-2018",
+                source: "mass-muni",
+                "source-layer": "ma_municipalities_degrees-8uvqwo",
                 layout: {},
                 paint: {
-                    "fill-color": [
-                        "match",
-                        ["feature-state", "party"],
-                        "democrat",
-                        "#6BA0C7",
-                        "republican",
-                        "#CE575E",
-                        "#ccc",
+                    'fill-color': [
+                        'match',
+                        ['feature-state', 'single_family'], // Attribute driving the color mapping, set in `setFeatureState`
+                        '1', '#6BA0C7',
+                        '0', '#CE575E',
+                        '#CCC' // Default color if none of the values match
                     ],
-                    "fill-opacity": 0.9,
-                },
+                    'fill-opacity': 0.8
+                }
             });
 
             map.addLayer({
-                id: "ca-district-line",
+                id: "mass-muni-line",
                 type: "line",
-                source: "ca-districts-2018",
-                "source-layer": "ca-districts-2018",
+                source: "mass-muni",
+                "source-layer": "ma_municipalities_degrees-8uvqwo",
                 layout: {
                     "line-join": "round",
                     "line-cap": "round",
@@ -122,24 +122,25 @@
             closeOnClick: false,
         });
 
-        map.on("mousemove", "ca-district-fill", function (e) {
+        map.on("mousemove", "mass-muni-fill", function (e) {
             map.getCanvas().style.cursor = "pointer";
 
-            var district = map.queryRenderedFeatures(e.point, {
-                layers: ["ca-district-fill"],
+            var muni = map.queryRenderedFeatures(e.point, {
+                layers: ["mass-muni-fill"],
             });
 
-            var props = district[0].properties;
-
-            var state = district[0].state;
-
-            var content = "<b>" + "District Details" + "</b>" + "<br>";
-            content += "Representative: " + state.candidate + "<br>";
-            content += "District: " + props.CD116FP + "<br>";
+            var FeatureState = muni[0].state; // Feature state
+            var content = "";
+            // iterate through the object
+            for (var key in FeatureState) {
+                if (FeatureState.hasOwnProperty(key)) {
+                    content += "<b>" + key + "</b>" + ": " + FeatureState[key] + "<br>";
+                }
+            }
             popup.setLngLat(e.lngLat).setHTML(content).addTo(map);
         });
 
-        map.on("mouseleave", "county-fill", function () {
+        map.on("mouseleave", "muni-fill", function () {
             map.getCanvas().style.cursor = "";
             popup.remove();
         });
